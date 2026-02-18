@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arcade Clash Pong</title>
+  <style>
+    :root {
+      --bg: #080b17;
+      --bg-accent: #161d38;
+      --glow-a: #4ef6ff;
+      --glow-b: #ff5fe3;
+      --text: #ecf4ff;
+      --warning: #ffd369;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background:
+        radial-gradient(circle at 20% 15%, #172044 0, transparent 35%),
+        radial-gradient(circle at 80% 80%, #2a163f 0, transparent 40%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .game-shell {
+      width: min(96vw, 1040px);
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+    }
+
+    .hud {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 10px #000;
+      user-select: none;
+    }
+
+    .player {
+      font-size: clamp(16px, 2vw, 24px);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .player.left { color: var(--glow-a); justify-self: start; }
+    .player.right { color: var(--glow-b); justify-self: end; }
+
+    .score {
+      font-size: clamp(34px, 5vw, 64px);
+      min-width: 90px;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .status {
+      font-size: clamp(14px, 1.8vw, 18px);
+      color: #c0d3ff;
+      text-align: center;
+      min-height: 1.3em;
+    }
+
+    canvas {
+      width: min(96vw, 1040px);
+      aspect-ratio: 16 / 9;
+      border-radius: 14px;
+      border: 2px solid #304474;
+      background: linear-gradient(180deg, #0b1024, #090c1b);
+      box-shadow:
+        0 0 0 2px #141f42 inset,
+        0 0 30px rgba(8, 18, 48, 0.9),
+        0 0 80px rgba(30, 48, 109, 0.45);
+      image-rendering: crisp-edges;
+    }
+
+    .controls {
+      color: #b6c8f0;
+      font-size: clamp(12px, 1.4vw, 15px);
+      text-align: center;
+      line-height: 1.5;
+      user-select: none;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid #3d4f80;
+      border-radius: 999px;
+      margin: 0 2px;
+      color: #f6f9ff;
+      background: rgba(37, 51, 95, 0.55);
+      font-weight: 700;
+    }
+
+    .flash {
+      animation: flash 0.25s ease-out;
+    }
+
+    @keyframes flash {
+      0% { filter: brightness(1.55); }
+      100% { filter: brightness(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="game-shell">
+      <div class="hud">
+        <div class="player left">Player A <span id="leftScore" class="score">0</span></div>
+        <div class="status" id="status">First to 7 wins · Press <span class="pill">Space</span> to start</div>
+        <div class="player right"><span id="rightScore" class="score">0</span> Player B</div>
+      </div>
+      <canvas id="game" width="1280" height="720"></canvas>
+      <div class="controls">
+        Player A: <span class="pill">W</span>/<span class="pill">S</span> ·
+        Player B: <span class="pill">↑</span>/<span class="pill">↓</span> ·
+        <span class="pill">Space</span> serve/pause ·
+        <span class="pill">R</span> restart
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const leftScoreEl = document.getElementById("leftScore");
+    const rightScoreEl = document.getElementById("rightScore");
+    const statusEl = document.getElementById("status");
+
+    const keys = new Set();
+    const WIN_SCORE = 7;
+
+    const state = {
+      running: false,
+      paused: false,
+      waitingServe: true,
+      gameOver: false,
+      lastTime: 0,
+      shake: 0,
+      particles: [],
+      powerupTimer: 0,
+      powerup: null,
+      messageUntil: 0,
+      paddles: {
+        left: {
+          x: 40,
+          y: canvas.height / 2 - 68,
+          w: 18,
+          h: 136,
+          speed: 680,
+          baseSpeed: 680,
+          color: "#4ef6ff",
+          score: 0,
+          boostUntil: 0
+        },
+        right: {
+          x: canvas.width - 58,
+          y: canvas.height / 2 - 68,
+          w: 18,
+          h: 136,
+          speed: 680,
+          baseSpeed: 680,
+          color: "#ff5fe3",
+          score: 0,
+          boostUntil: 0
+        }
+      },
+      ball: {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        r: 11,
+        vx: 0,
+        vy: 0,
+        speed: 460,
+        maxSpeed: 1300,
+        trail: []
+      }
+    };
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    function resetBall(direction = Math.random() < 0.5 ? -1 : 1) {
+      const b = state.ball;
+      b.x = canvas.width / 2;
+      b.y = canvas.height / 2;
+      b.speed = 460;
+      const angle = (Math.random() * 0.7 - 0.35);
+      b.vx = Math.cos(angle) * b.speed * direction;
+      b.vy = Math.sin(angle) * b.speed;
+      b.trail.length = 0;
+      state.waitingServe = true;
+      state.running = false;
+    }
+
+    function startServe() {
+      if (state.gameOver) return;
+      state.waitingServe = false;
+      state.running = true;
+      state.paused = false;
+      setStatus("Go!");
+      state.messageUntil = performance.now() + 700;
+    }
+
+    function restartGame() {
+      const { left, right } = state.paddles;
+      left.score = 0;
+      right.score = 0;
+      left.y = canvas.height / 2 - left.h / 2;
+      right.y = canvas.height / 2 - right.h / 2;
+      left.boostUntil = 0;
+      right.boostUntil = 0;
+      state.gameOver = false;
+      state.powerup = null;
+      state.particles.length = 0;
+      state.shake = 0;
+      leftScoreEl.textContent = "0";
+      rightScoreEl.textContent = "0";
+      resetBall();
+      setStatus("First to 7 wins · Press Space to start");
+    }
+
+    function emitParticles(x, y, color, count = 12) {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const speed = 60 + Math.random() * 300;
+        state.particles.push({
+          x,
+          y,
+          vx: Math.cos(a) * speed,
+          vy: Math.sin(a) * speed,
+          life: 0.22 + Math.random() * 0.45,
+          color,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    function spawnPowerup() {
+      const size = 18;
+      const margin = 180;
+      state.powerup = {
+        x: margin + Math.random() * (canvas.width - margin * 2),
+        y: 100 + Math.random() * (canvas.height - 200),
+        size,
+        pulse: 0,
+        type: "boost"
+      };
+    }
+
+    function applyBoost(paddleKey) {
+      const paddle = state.paddles[paddleKey];
+      paddle.boostUntil = performance.now() + 5000;
+      const who = paddleKey === "left" ? "Player A" : "Player B";
+      setStatus(`${who} snagged TURBO for 5s!`);
+      state.messageUntil = performance.now() + 1200;
+      emitParticles(state.ball.x, state.ball.y, paddle.color, 30);
+      canvas.classList.remove("flash");
+      void canvas.offsetWidth;
+      canvas.classList.add("flash");
+    }
+
+    function update(dt, now) {
+      const { left, right } = state.paddles;
+      const ball = state.ball;
+
+      if (keys.has("w")) left.y -= left.speed * dt;
+      if (keys.has("s")) left.y += left.speed * dt;
+      if (keys.has("ArrowUp")) right.y -= right.speed * dt;
+      if (keys.has("ArrowDown")) right.y += right.speed * dt;
+
+      left.y = Math.max(0, Math.min(canvas.height - left.h, left.y));
+      right.y = Math.max(0, Math.min(canvas.height - right.h, right.y));
+
+      if (!state.running || state.paused || state.gameOver) {
+        return;
+      }
+
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+
+      ball.trail.push({ x: ball.x, y: ball.y });
+      if (ball.trail.length > 12) ball.trail.shift();
+
+      if (ball.y - ball.r <= 0) {
+        ball.y = ball.r;
+        ball.vy = Math.abs(ball.vy);
+        emitParticles(ball.x, ball.y, "#b7c8ff", 10);
+      } else if (ball.y + ball.r >= canvas.height) {
+        ball.y = canvas.height - ball.r;
+        ball.vy = -Math.abs(ball.vy);
+        emitParticles(ball.x, ball.y, "#b7c8ff", 10);
+      }
+
+      const activeSpeed = (paddle) => now < paddle.boostUntil ? paddle.baseSpeed * 1.35 : paddle.baseSpeed;
+      left.speed = activeSpeed(left);
+      right.speed = activeSpeed(right);
+
+      const paddleHit = (p, side) => {
+        const px = side === "left" ? p.x + p.w : p.x;
+        const withinY = ball.y + ball.r >= p.y && ball.y - ball.r <= p.y + p.h;
+        const withinX = side === "left"
+          ? ball.x - ball.r <= px && ball.x > p.x
+          : ball.x + ball.r >= px && ball.x < p.x + p.w;
+
+        if (withinX && withinY) {
+          const hit = (ball.y - (p.y + p.h / 2)) / (p.h / 2);
+          const clamped = Math.max(-1, Math.min(1, hit));
+          const dir = side === "left" ? 1 : -1;
+
+          ball.speed = Math.min(ball.maxSpeed, ball.speed * 1.055 + 18);
+          const angle = clamped * 1.02;
+          ball.vx = Math.cos(angle) * ball.speed * dir;
+          ball.vy = Math.sin(angle) * ball.speed;
+
+          if (side === "left") ball.x = p.x + p.w + ball.r;
+          else ball.x = p.x - ball.r;
+
+          emitParticles(ball.x, ball.y, p.color, 18);
+          state.shake = 0.16;
+          return true;
+        }
+        return false;
+      };
+
+      paddleHit(left, "left");
+      paddleHit(right, "right");
+
+      if (state.powerup) {
+        state.powerup.pulse += dt * 5;
+        const d = Math.hypot(ball.x - state.powerup.x, ball.y - state.powerup.y);
+        if (d < ball.r + state.powerup.size) {
+          const owner = ball.vx < 0 ? "right" : "left";
+          applyBoost(owner);
+          state.powerup = null;
+          state.powerupTimer = 4 + Math.random() * 4;
+        }
+      } else {
+        state.powerupTimer -= dt;
+        if (state.powerupTimer <= 0) {
+          spawnPowerup();
+        }
+      }
+
+      if (ball.x + ball.r < 0) {
+        right.score += 1;
+        rightScoreEl.textContent = String(right.score);
+        emitParticles(0, ball.y, right.color, 30);
+        pointScored("Player B");
+        resetBall(-1);
+      } else if (ball.x - ball.r > canvas.width) {
+        left.score += 1;
+        leftScoreEl.textContent = String(left.score);
+        emitParticles(canvas.width, ball.y, left.color, 30);
+        pointScored("Player A");
+        resetBall(1);
+      }
+    }
+
+    function pointScored(playerName) {
+      const { left, right } = state.paddles;
+      if (left.score >= WIN_SCORE || right.score >= WIN_SCORE) {
+        state.gameOver = true;
+        state.running = false;
+        setStatus(`${playerName} wins! Press R to play again.`);
+      } else {
+        setStatus(`${playerName} scores! Press Space to serve.`);
+      }
+    }
+
+    function render(now) {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.save();
+
+      if (state.shake > 0) {
+        const mag = state.shake * 12;
+        ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+        state.shake = Math.max(0, state.shake - 0.017);
+      }
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, h);
+      gradient.addColorStop(0, "#0b1230");
+      gradient.addColorStop(1, "#080d20");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = "rgba(163, 191, 255, 0.2)";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([22, 18]);
+      ctx.beginPath();
+      ctx.moveTo(w / 2, 20);
+      ctx.lineTo(w / 2, h - 20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const { left, right } = state.paddles;
+      drawPaddle(left, now);
+      drawPaddle(right, now);
+
+      drawBall();
+      drawPowerup(now);
+      drawParticles();
+      drawBoostBars(now);
+
+      ctx.restore();
+
+      if (state.messageUntil && now > state.messageUntil && !state.gameOver) {
+        if (state.waitingServe) {
+          setStatus("Press Space to serve");
+        } else if (state.running) {
+          setStatus("Rally!");
+        }
+        state.messageUntil = 0;
+      }
+    }
+
+    function drawPaddle(paddle, now) {
+      const boosted = now < paddle.boostUntil;
+      const glow = boosted ? 24 : 14;
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = paddle.color;
+      ctx.fillStyle = paddle.color;
+      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+      ctx.shadowBlur = 0;
+
+      if (boosted) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.fillRect(paddle.x - 4, paddle.y - 4, paddle.w + 8, 4);
+      }
+    }
+
+    function drawBall() {
+      const b = state.ball;
+      for (let i = 0; i < b.trail.length; i++) {
+        const t = b.trail[i];
+        const alpha = i / b.trail.length;
+        ctx.fillStyle = `rgba(219, 233, 255, ${alpha * 0.45})`;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, b.r * (0.3 + alpha * 0.7), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const grd = ctx.createRadialGradient(b.x - 3, b.y - 3, 2, b.x, b.y, b.r + 4);
+      grd.addColorStop(0, "#ffffff");
+      grd.addColorStop(1, "#9ec0ff");
+
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "#b8d2ff";
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawPowerup(now) {
+      if (!state.powerup) return;
+      const p = state.powerup;
+      const pulse = 1 + Math.sin(p.pulse + now * 0.004) * 0.16;
+      const s = p.size * pulse;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(now * 0.002);
+      ctx.strokeStyle = "#ffd369";
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = "#ffd369";
+
+      ctx.beginPath();
+      ctx.moveTo(-s, 0);
+      ctx.lineTo(s, 0);
+      ctx.moveTo(0, -s);
+      ctx.lineTo(0, s);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.7, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.life -= 1 / 60;
+        if (p.life <= 0) {
+          state.particles.splice(i, 1);
+          continue;
+        }
+        p.x += p.vx / 60;
+        p.y += p.vy / 60;
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+
+        ctx.fillStyle = hexToRgba(p.color, Math.min(1, p.life * 1.6));
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+    }
+
+    function drawBoostBars(now) {
+      const left = state.paddles.left;
+      const right = state.paddles.right;
+      drawBoost(left, 20, 16, now);
+      drawBoost(right, canvas.width - 180, 16, now);
+    }
+
+    function drawBoost(paddle, x, y, now) {
+      const duration = Math.max(0, paddle.boostUntil - now);
+      if (duration <= 0) return;
+
+      const max = 5000;
+      const pct = duration / max;
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(x, y, 160, 10);
+      ctx.fillStyle = paddle.color;
+      ctx.fillRect(x, y, 160 * pct, 10);
+    }
+
+    function hexToRgba(hex, alpha) {
+      const clean = hex.replace("#", "");
+      const bigint = parseInt(clean, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function gameLoop(now) {
+      if (!state.lastTime) state.lastTime = now;
+      const dt = Math.min(0.032, (now - state.lastTime) / 1000);
+      state.lastTime = now;
+      update(dt, now);
+      render(now);
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (["ArrowUp", "ArrowDown", " "].includes(e.key)) e.preventDefault();
+
+      if (e.key === " ") {
+        if (state.gameOver) return;
+        if (state.waitingServe) {
+          startServe();
+        } else {
+          state.paused = !state.paused;
+          if (state.paused) {
+            setStatus("Paused · Press Space to resume");
+          } else {
+            setStatus("Back in play!");
+            state.messageUntil = performance.now() + 700;
+          }
+        }
+        return;
+      }
+
+      if (e.key.toLowerCase() === "r") {
+        restartGame();
+        return;
+      }
+
+      keys.add(e.key);
+      keys.add(e.key.toLowerCase());
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keys.delete(e.key);
+      keys.delete(e.key.toLowerCase());
+    });
+
+    state.powerupTimer = 3.5;
+    restartGame();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
