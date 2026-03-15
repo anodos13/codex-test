@@ -21,7 +21,6 @@
       --tile-enemy: #4a2f2f;
       --highlight: #f8e29a;
     }
-
     * { box-sizing: border-box; }
 
     body {
@@ -184,7 +183,9 @@
       font-size: 12px;
       margin-top: 6px;
     }
-
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hint { color: #dbccb8; font-size: 12px; margin-top: 6px; }
     .pill {
       border-radius: 999px;
       border: 1px solid #7f6648;
@@ -197,6 +198,8 @@
     @media (max-width: 1040px) {
       .shell { grid-template-columns: 1fr; }
     }
+
+    @media (max-width: 1040px) { .shell { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -512,7 +515,6 @@
       } else if (aiAlive === 0 || aiMorale < 12 || activeUnits("ai").length < 3) {
         endGame("Victory! The opposing host breaks and surrenders.");
       }
-    }
 
     function endGame(message) {
       state.gameOver = true;
@@ -620,6 +622,7 @@
         render();
         return;
       }
+    }
 
       if (state.turn !== "player") return;
 
