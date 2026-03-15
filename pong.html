@@ -12,6 +12,9 @@
       --ink: #f2e9d8;
       --accent: #f0b96b;
       --danger: #dc6f55;
+      --ally: #7ac3ff;
+      --enemy: #ff9f8e;
+      --routed: #9f9f9f;
       --tile: #3a3228;
       --tile-alt: #352e25;
       --tile-deploy: #2f4633;
@@ -19,10 +22,11 @@
       --highlight: #f8e29a;
     }
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: Inter, system-ui, sans-serif;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background: radial-gradient(circle at top, #2a2219, var(--bg));
       color: var(--ink);
       display: flex;
@@ -30,58 +34,93 @@
       align-items: center;
       padding: 20px;
     }
+
     .shell {
-      width: min(1220px, 100%);
+      width: min(1200px, 100%);
       background: rgba(20, 16, 12, 0.96);
       border: 1px solid #4e3e2b;
       border-radius: 14px;
       padding: 16px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
       display: grid;
-      grid-template-columns: minmax(600px, 1fr) 330px;
+      grid-template-columns: minmax(600px, 1fr) 320px;
       gap: 14px;
     }
-    .battlefield-wrap { display: grid; gap: 10px; }
-    .topbar {
-      display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap;
-      background: var(--panel); border: 1px solid #473826; border-radius: 10px; padding: 10px 12px; font-size: 14px;
+
+    .battlefield-wrap {
+      display: grid;
+      gap: 10px;
     }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--panel);
+      padding: 10px 12px;
+      border: 1px solid #473826;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
     #battlefield {
       display: grid;
       grid-template-columns: repeat(14, 1fr);
       gap: 2px;
+      background: #3c3228;
       border: 1px solid #5a4a35;
       border-radius: 8px;
       overflow: hidden;
       aspect-ratio: 14 / 10;
-      background: #3c3228;
       user-select: none;
     }
+
     .tile {
       position: relative;
       background: var(--tile);
       border: 1px solid #2d261f;
       display: grid;
       place-items: center;
+      font-size: 11px;
       cursor: pointer;
       transition: filter .12s ease;
     }
+
     .tile:nth-child(even) { background: var(--tile-alt); }
     .tile.deploy { background: var(--tile-deploy); }
     .tile.enemy-zone { background: var(--tile-enemy); }
     .tile.move-target { outline: 2px solid #6ed489; outline-offset: -2px; }
     .tile.attack-target { outline: 2px solid var(--danger); outline-offset: -2px; }
-    .tile.selected { outline: 2px solid var(--highlight); outline-offset: -2px; filter: brightness(1.15); }
-    .tile:hover { filter: brightness(1.12); }
+    .tile.selected { outline: 2px solid var(--highlight); outline-offset: -2px; filter: brightness(1.2); }
+    .tile:hover { filter: brightness(1.14); }
+
     .unit {
-      width: 92%; height: 92%; border-radius: 7px; border: 1px solid rgba(0, 0, 0, 0.6);
-      display: grid; grid-template-rows: auto auto; place-items: center; line-height: 1.05; font-size: 10px; padding: 1px;
+      width: 90%;
+      height: 90%;
+      border-radius: 7px;
+      border: 1px solid rgba(0, 0, 0, 0.6);
+      display: grid;
+      grid-template-rows: auto auto;
+      align-content: center;
+      justify-items: center;
+      line-height: 1.1;
+      font-size: 10px;
       text-align: center;
+      padding: 1px;
     }
+
     .unit.player { background: linear-gradient(145deg, #3a71a4, #20415c); color: #e8f6ff; }
     .unit.ai { background: linear-gradient(145deg, #a45545, #5f2c2c); color: #ffeceb; }
     .unit.routed { background: linear-gradient(145deg, #6b6b6b, #464646); color: #f0f0f0; }
 
-    .side-panel { display: grid; gap: 10px; grid-template-rows: auto auto auto auto 1fr; }
+    .side-panel {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 10px;
+    }
+
     .panel {
       background: var(--panel);
       border: 1px solid #473826;
@@ -90,9 +129,26 @@
       font-size: 13px;
       line-height: 1.35;
     }
-    h1 { margin: 0; font-size: 18px; color: var(--accent); }
-    h2 { margin: 0 0 6px; font-size: 14px; color: #f5c98d; }
-    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      color: #f5c98d;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     button {
       border: 1px solid #6b5438;
       background: var(--panel-soft);
@@ -102,31 +158,45 @@
       cursor: pointer;
       font-weight: 600;
     }
+
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .log {
+      max-height: 250px;
+      overflow: auto;
+      display: grid;
+      gap: 5px;
+    }
+
+    .log p {
+      margin: 0;
+      padding: 5px;
+      background: #2c251d;
+      border-radius: 6px;
+      border-left: 3px solid #6e5940;
+      font-size: 12px;
+    }
+
+    .hint {
+      color: #dbccb8;
+      font-size: 12px;
+      margin-top: 6px;
+    }
     button:hover { filter: brightness(1.1); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .hint { color: #dbccb8; font-size: 12px; margin-top: 6px; }
     .pill {
-      border-radius: 999px; border: 1px solid #7f6648; background: #322a21;
-      padding: 2px 8px; margin-right: 4px; font-size: 11px;
-    }
-    .log { max-height: 220px; overflow: auto; display: grid; gap: 5px; }
-    .log p { margin: 0; padding: 5px; background: #2c251d; border-radius: 6px; border-left: 3px solid #6e5940; font-size: 12px; }
-
-    .deploy-preview {
-      border: 1px dashed #6b855f;
-      border-radius: 8px;
-      background: #253227;
-      padding: 8px;
-      margin-top: 6px;
+      border-radius: 999px;
+      border: 1px solid #7f6648;
+      background: #322a21;
+      padding: 2px 8px;
+      margin-right: 4px;
+      font-size: 11px;
     }
 
-    #defeatArtWrap { display: none; }
-    #defeatArt {
-      width: 100%;
-      border: 1px solid #6b3a34;
-      border-radius: 8px;
-      background: linear-gradient(180deg, #3e2121, #1f1313);
-      image-rendering: crisp-edges;
+    @media (max-width: 1040px) {
+      .shell { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 1040px) { .shell { grid-template-columns: 1fr; } }
@@ -138,7 +208,7 @@
       <div class="topbar">
         <div><strong>Player:</strong> <span id="playerGeneral"></span> (<span id="playerFaction"></span>)</div>
         <div><strong>Enemy:</strong> <span id="aiGeneral"></span> (<span id="aiFaction"></span>)</div>
-        <div><span class="pill" id="phaseText"></span><span class="pill" id="turnText"></span></div>
+        <div><span class="pill" id="phaseText"></span> <span class="pill" id="turnText"></span></div>
       </div>
       <div id="battlefield" aria-label="battlefield"></div>
     </section>
@@ -152,15 +222,10 @@
           <button id="retreatBtn">Feigned Retreat</button>
           <button id="newBtn">New Battle</button>
         </div>
-        <div class="hint">Deploy: click green tiles on the left. Battle: click your unit then highlighted move/attack tiles.</div>
+        <div class="hint">In deployment phase, click empty green tiles to place units. During battle, click your unit then a highlighted tile to move or attack.</div>
       </section>
 
-      <section class="panel" id="deployPanel">
-        <h2>Deployment Queue</h2>
-        <div id="deployPreview" class="deploy-preview">No unit selected for deployment.</div>
-      </section>
-
-      <section class="panel">
+      <section class="panel" id="unitPanel">
         <h2>Selected Unit</h2>
         <div id="unitDetails">No unit selected.</div>
       </section>
@@ -168,12 +233,6 @@
       <section class="panel">
         <h2>Army State</h2>
         <div id="armyStats"></div>
-      </section>
-
-      <section class="panel" id="defeatArtWrap">
-        <h2>Enemy Taunt</h2>
-        <canvas id="defeatArt" width="300" height="220"></canvas>
-        <div id="defeatCaption" class="hint"></div>
       </section>
 
       <section class="panel">
@@ -188,21 +247,15 @@
     const HEIGHT = 10;
     const UNIT_COUNT = 12;
 
-    const MALE_GENERALS = [
-      { name: "Hannibal Barca", faction: "Carthage", bonus: "flank", gender: "male" },
-      { name: "Julius Caesar", faction: "Rome", bonus: "discipline", gender: "male" },
-      { name: "Sun Tzu", faction: "Wu", bonus: "trickery", gender: "male" },
-      { name: "Alexander", faction: "Macedon", bonus: "cavalry", gender: "male" }
+    const GENERAL_POOL = [
+      { name: "Hannibal Barca", faction: "Carthage", bonus: "flank" },
+      { name: "Julius Caesar", faction: "Rome", bonus: "discipline" },
+      { name: "Cleopatra VII", faction: "Egypt", bonus: "morale" },
+      { name: "Sun Tzu", faction: "Wu", bonus: "trickery" },
+      { name: "Leonidas", faction: "Sparta", bonus: "infantry" },
+      { name: "Boudica", faction: "Iceni", bonus: "charge" },
+      { name: "Alexander", faction: "Macedon", bonus: "cavalry" }
     ];
-
-    const FEMALE_GENERALS = [
-      { name: "Cleopatra VII", faction: "Egypt", bonus: "morale", gender: "female" },
-      { name: "Boudica", faction: "Iceni", bonus: "charge", gender: "female" },
-      { name: "Tomyris", faction: "Massagetae", bonus: "ambush", gender: "female" },
-      { name: "Zenobia", faction: "Palmyra", bonus: "resolve", gender: "female" }
-    ];
-
-    const GENERAL_POOL = [...MALE_GENERALS, ...FEMALE_GENERALS];
 
     const UNIT_TEMPLATES = [
       { type: "Spear", hp: 26, atk: 8, move: 2, morale: 78 },
@@ -224,48 +277,10 @@
     const unitDetailsEl = document.getElementById("unitDetails");
     const armyStatsEl = document.getElementById("armyStats");
     const battleLogEl = document.getElementById("battleLog");
-    const deployPreviewEl = document.getElementById("deployPreview");
-    const deployPanelEl = document.getElementById("deployPanel");
-    const defeatArtWrapEl = document.getElementById("defeatArtWrap");
-    const defeatCaptionEl = document.getElementById("defeatCaption");
-    const defeatArtCanvas = document.getElementById("defeatArt");
 
     const nextBtn = document.getElementById("nextBtn");
     const retreatBtn = document.getElementById("retreatBtn");
     const newBtn = document.getElementById("newBtn");
-
-    const requiredElements = [
-      battlefield,
-      playerGeneralEl,
-      playerFactionEl,
-      aiGeneralEl,
-      aiFactionEl,
-      phaseTextEl,
-      turnTextEl,
-      statusTextEl,
-      unitDetailsEl,
-      armyStatsEl,
-      battleLogEl,
-      deployPreviewEl,
-      deployPanelEl,
-      defeatArtWrapEl,
-      defeatCaptionEl,
-      defeatArtCanvas,
-      nextBtn,
-      retreatBtn,
-      newBtn
-    ];
-
-    function failFast(msg) {
-      console.error(msg);
-      const fallback = document.body;
-      fallback.innerHTML = `<div style="padding:16px;color:#fbe3de;background:#3b1717;border:1px solid #8d3a30;border-radius:8px;font-family:system-ui,sans-serif">${msg}</div>`;
-    }
-
-    if (requiredElements.some((el) => !el)) {
-      failFast("Game failed to initialize: a required UI element is missing. Please refresh or re-open pong.html.");
-      throw new Error("Missing required DOM elements");
-    }
 
     const state = {
       grid: [],
@@ -280,10 +295,13 @@
       toDeploy: [],
       retreatCooldown: 0,
       actionPoints: 0,
+      maxActions: 0,
       gameOver: false
     };
 
-    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
     function shuffle(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -293,8 +311,14 @@
       return arr;
     }
 
-    const coordsToIndex = (x, y) => y * WIDTH + x;
-    const tileAt = (x, y) => (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) ? null : state.grid[coordsToIndex(x, y)];
+    function coordsToIndex(x, y) {
+      return y * WIDTH + x;
+    }
+
+    function tileAt(x, y) {
+      if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return null;
+      return state.grid[coordsToIndex(x, y)];
+    }
 
     function createUnit(side, template, idx) {
       return {
@@ -316,13 +340,16 @@
     }
 
     function setupBattle() {
-      state.grid = Array.from({ length: WIDTH * HEIGHT }, (_, i) => ({ x: i % WIDTH, y: Math.floor(i / WIDTH), unitId: null }));
+      state.grid = Array.from({ length: WIDTH * HEIGHT }, (_, i) => ({
+        x: i % WIDTH,
+        y: Math.floor(i / WIDTH),
+        unitId: null
+      }));
       state.phase = "deploy";
       state.turn = "player";
       state.turnNumber = 1;
       state.selectedUnitId = null;
       state.gameOver = false;
-      state.retreatCooldown = 0;
 
       const generals = shuffle([...GENERAL_POOL]);
       state.playerGeneral = generals[0];
@@ -331,26 +358,25 @@
       state.playerUnits = Array.from({ length: UNIT_COUNT }, (_, i) => createUnit("player", UNIT_TEMPLATES[i % UNIT_TEMPLATES.length], i));
       state.aiUnits = Array.from({ length: UNIT_COUNT }, (_, i) => createUnit("ai", UNIT_TEMPLATES[(i + 2) % UNIT_TEMPLATES.length], i));
       state.toDeploy = [...state.playerUnits];
+      state.retreatCooldown = 0;
 
       autoDeployAI();
-      state.actionPoints = aliveUnits("player").length;
-
-      battleLogEl.innerHTML = "";
-      defeatArtWrapEl.style.display = "none";
-      deployPanelEl.style.display = "block";
-      nextBtn.disabled = true;
-      retreatBtn.disabled = true;
+      state.maxActions = aliveUnits("player").length;
+      state.actionPoints = state.maxActions;
 
       log(`A new clash begins: ${state.playerGeneral.name} vs ${state.aiGeneral.name}.`);
-      setStatus("Deploy your units in green tiles on the left half.");
+      updateHeader();
       render();
+      setStatus("Deploy your units in green tiles on the left half.");
     }
 
     function autoDeployAI() {
-      const slots = [];
-      for (let y = 0; y < HEIGHT; y++) for (let x = 9; x < WIDTH; x++) slots.push({ x, y });
-      shuffle(slots);
-      state.aiUnits.forEach((unit, i) => placeUnit(unit, slots[i].x, slots[i].y));
+      const candidates = [];
+      for (let y = 0; y < HEIGHT; y++) {
+        for (let x = 9; x < WIDTH; x++) candidates.push({ x, y });
+      }
+      shuffle(candidates);
+      state.aiUnits.forEach((unit, i) => placeUnit(unit, candidates[i].x, candidates[i].y));
     }
 
     function placeUnit(unit, x, y) {
@@ -370,23 +396,39 @@
       unit.y = null;
     }
 
-    const getUnitById = (id) => [...state.playerUnits, ...state.aiUnits].find(u => u.id === id) || null;
-    const aliveUnits = (side) => (side === "player" ? state.playerUnits : state.aiUnits).filter(u => u.hp > 0);
-    const activeUnits = (side) => aliveUnits(side).filter(u => !u.routed);
-
-    function adjacentTiles(x, y) {
-      return [{ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }]
-        .map(c => tileAt(c.x, c.y)).filter(Boolean);
+    function getUnitById(id) {
+      return [...state.playerUnits, ...state.aiUnits].find(u => u.id === id) || null;
     }
 
-    const distance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+    function aliveUnits(side) {
+      const list = side === "player" ? state.playerUnits : state.aiUnits;
+      return list.filter(u => u.hp > 0);
+    }
+
+    function activeUnits(side) {
+      return aliveUnits(side).filter(u => !u.routed);
+    }
+
+    function adjacentTiles(x, y) {
+      return [
+        { x: x + 1, y },
+        { x: x - 1, y },
+        { x, y: y + 1 },
+        { x, y: y - 1 }
+      ].map(c => tileAt(c.x, c.y)).filter(Boolean);
+    }
+
+    function distance(a, b) {
+      return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+    }
 
     function movementOptions(unit) {
       const options = [];
-      const q = [{ x: unit.x, y: unit.y, cost: 0 }];
+      const frontier = [{ x: unit.x, y: unit.y, cost: 0 }];
       const seen = new Set([`${unit.x},${unit.y}`]);
-      while (q.length) {
-        const cur = q.shift();
+
+      while (frontier.length) {
+        const cur = frontier.shift();
         adjacentTiles(cur.x, cur.y).forEach(t => {
           const key = `${t.x},${t.y}`;
           const nCost = cur.cost + 1;
@@ -394,7 +436,7 @@
           seen.add(key);
           if (!t.unitId) {
             options.push({ x: t.x, y: t.y });
-            q.push({ x: t.x, y: t.y, cost: nCost });
+            frontier.push({ x: t.x, y: t.y, cost: nCost });
           }
         });
       }
@@ -417,145 +459,15 @@
 
     function computeArmyMorale(side) {
       const units = aliveUnits(side);
-      return units.length ? Math.round(units.reduce((sum, u) => sum + Math.max(u.morale, 0), 0) / units.length) : 0;
-    }
-
-    function setStatus(msg) { statusTextEl.textContent = msg; }
-
-    function log(msg) {
-      const p = document.createElement("p");
-      p.textContent = `T${state.turnNumber}: ${msg}`;
-      battleLogEl.prepend(p);
-      while (battleLogEl.children.length > 28) battleLogEl.removeChild(battleLogEl.lastChild);
-    }
-
-    function drawDefeatPortrait(general) {
-      const ctx = defeatArtCanvas.getContext("2d");
-      ctx.clearRect(0, 0, defeatArtCanvas.width, defeatArtCanvas.height);
-
-      ctx.fillStyle = "#2a1414";
-      ctx.fillRect(0, 0, 300, 220);
-      ctx.fillStyle = "#4e2424";
-      for (let i = 0; i < 35; i++) {
-        ctx.fillRect(rand(0, 290), rand(0, 210), 2, 2);
-      }
-
-      ctx.fillStyle = "#d2a574";
-      ctx.beginPath();
-      ctx.ellipse(150, 108, 56, 62, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#2a1913";
-      ctx.beginPath();
-      ctx.ellipse(150, 64, 66, 40, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "#23130e";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(123, 94); ctx.lineTo(141, 90);
-      ctx.moveTo(177, 90); ctx.lineTo(159, 94);
-      ctx.stroke();
-
-      ctx.fillStyle = "#170e0b";
-      ctx.beginPath();
-      ctx.ellipse(132, 104, 6, 4, 0, 0, Math.PI * 2);
-      ctx.ellipse(168, 104, 6, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "#60231b";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.arc(150, 125, 24, 0.1, Math.PI - 0.1, false);
-      ctx.stroke();
-
-      ctx.fillStyle = "#f2ece6";
-      ctx.fillRect(132, 132, 36, 8);
-
-      ctx.fillStyle = "rgba(0,0,0,0.3)";
-      ctx.fillRect(0, 170, 300, 50);
-      ctx.fillStyle = "#ffd9c8";
-      ctx.font = "bold 16px Inter, sans-serif";
-      ctx.fillText(`${general.name}`, 14, 192);
-      ctx.font = "13px Inter, sans-serif";
-      ctx.fillText("'Aha! Better luck next campaign.'", 14, 210);
-    }
-
-    function updateHeader() {
-      playerGeneralEl.textContent = state.playerGeneral.name;
-      playerFactionEl.textContent = state.playerGeneral.faction;
-      aiGeneralEl.textContent = state.aiGeneral.name;
-      aiFactionEl.textContent = state.aiGeneral.faction;
-      phaseTextEl.textContent = state.phase === "deploy" ? "Deployment" : "Battle";
-      turnTextEl.textContent = `Turn ${state.turnNumber} · ${state.turn.toUpperCase()}`;
-    }
-
-    function updateDeployPreview() {
-      if (state.phase !== "deploy") {
-        deployPanelEl.style.display = "none";
-        nextBtn.disabled = false;
-        retreatBtn.disabled = false;
-        return;
-      }
-      deployPanelEl.style.display = "block";
-      nextBtn.disabled = true;
-      retreatBtn.disabled = true;
-      const next = state.toDeploy[0];
-      if (!next) {
-        deployPreviewEl.innerHTML = "All units deployed.";
-        return;
-      }
-      deployPreviewEl.innerHTML = `
-        <strong>Next to place:</strong> ${next.type}<br>
-        HP ${next.hp}/${next.maxHp} · ATK ${next.atk} · Move ${next.move} · Range ${next.range}<br>
-        Morale ${next.morale} · <strong>${state.toDeploy.length}</strong> units left to deploy
-      `;
-    }
-
-    function selectionInfo(unit) {
-      if (!unit) return void (unitDetailsEl.innerHTML = "No unit selected.");
-      unitDetailsEl.innerHTML = `<strong>${unit.type}</strong> (${unit.side})<br>HP ${unit.hp}/${unit.maxHp} · Morale ${Math.round(unit.morale)}<br>ATK ${unit.atk} · Move ${unit.move} · Range ${unit.range}${unit.routed ? "<br><em>Routed</em>" : ""}`;
-    }
-
-    function armyInfo() {
-      armyStatsEl.innerHTML = `
-        <div>Player units: <strong>${aliveUnits("player").length}</strong> | Avg morale: <strong>${computeArmyMorale("player")}</strong></div>
-        <div>Enemy units: <strong>${aliveUnits("ai").length}</strong> | Avg morale: <strong>${computeArmyMorale("ai")}</strong></div>
-        <div>Actions left this turn: <strong>${state.actionPoints}</strong></div>
-        <div>Feigned retreat cooldown: <strong>${state.retreatCooldown}</strong></div>
-      `;
-    }
-
-    function endGame(message, result) {
-      state.gameOver = true;
-      setStatus(message);
-      log(message);
-      nextBtn.disabled = true;
-      retreatBtn.disabled = true;
-      if (result === "defeat") {
-        defeatArtWrapEl.style.display = "block";
-        drawDefeatPortrait(state.aiGeneral);
-        defeatCaptionEl.textContent = `${state.aiGeneral.name} mocks your retreat with a taunting laugh.`;
-      }
-    }
-
-    function evaluateSurrender() {
-      const pAlive = aliveUnits("player").length;
-      const aAlive = aliveUnits("ai").length;
-      const pMor = computeArmyMorale("player");
-      const aMor = computeArmyMorale("ai");
-
-      if (pAlive === 0 || pMor < 12 || activeUnits("player").length < 3) {
-        endGame("Defeat! Your army collapses and flees the field.", "defeat");
-      } else if (aAlive === 0 || aMor < 12 || activeUnits("ai").length < 3) {
-        endGame("Victory! The opposing host breaks and surrenders.", "victory");
-      }
+      if (!units.length) return 0;
+      return Math.round(units.reduce((sum, u) => sum + Math.max(u.morale, 0), 0) / units.length);
     }
 
     function attack(attacker, defender) {
+      const base = attacker.atk + rand(-2, 3);
       const flankBonus = calculateSurroundPenalty(defender);
       const commanderBoost = attacker.side === "player" && state.playerGeneral.bonus === "charge" ? 2 : 0;
-      const damage = Math.max(2, attacker.atk + rand(-2, 3) + Math.floor(flankBonus / 2) + commanderBoost);
+      const damage = Math.max(2, base + Math.floor(flankBonus / 2) + commanderBoost);
 
       defender.hp -= damage;
       defender.morale -= rand(7, 14) + flankBonus;
@@ -566,10 +478,13 @@
         defender.morale = 0;
         removeUnitFromGrid(defender);
         log(`${attacker.type} destroys ${defender.type}.`);
-      } else if (defender.morale < 25 || (defender.hp < defender.maxHp * 0.35 && Math.random() < 0.42)) {
-        defender.routed = true;
-        defender.morale = Math.max(8, defender.morale);
-        log(`${defender.type} routs under pressure!`);
+      } else {
+        const routedCheck = defender.morale < 25 || (defender.hp < defender.maxHp * 0.35 && Math.random() < 0.42);
+        if (routedCheck) {
+          defender.routed = true;
+          defender.morale = Math.max(8, defender.morale);
+          log(`${defender.type} routs under pressure!`);
+        }
       }
 
       attacker.acted = true;
@@ -587,6 +502,67 @@
       unit.y = y;
       unit.acted = true;
       state.actionPoints = Math.max(0, state.actionPoints - 1);
+    }
+
+    function evaluateSurrender() {
+      const playerAlive = aliveUnits("player").length;
+      const aiAlive = aliveUnits("ai").length;
+      const playerMorale = computeArmyMorale("player");
+      const aiMorale = computeArmyMorale("ai");
+
+      if (playerAlive === 0 || playerMorale < 12 || activeUnits("player").length < 3) {
+        endGame("Defeat! Your army collapses and flees the field.");
+      } else if (aiAlive === 0 || aiMorale < 12 || activeUnits("ai").length < 3) {
+        endGame("Victory! The opposing host breaks and surrenders.");
+      }
+
+    function endGame(message) {
+      state.gameOver = true;
+      setStatus(message);
+      log(message);
+      nextBtn.disabled = true;
+      retreatBtn.disabled = true;
+    }
+
+    function setStatus(msg) {
+      statusTextEl.textContent = msg;
+    }
+
+    function log(msg) {
+      const p = document.createElement("p");
+      p.textContent = `T${state.turnNumber}: ${msg}`;
+      battleLogEl.prepend(p);
+      while (battleLogEl.children.length > 26) battleLogEl.removeChild(battleLogEl.lastChild);
+    }
+
+    function updateHeader() {
+      playerGeneralEl.textContent = state.playerGeneral.name;
+      playerFactionEl.textContent = state.playerGeneral.faction;
+      aiGeneralEl.textContent = state.aiGeneral.name;
+      aiFactionEl.textContent = state.aiGeneral.faction;
+      phaseTextEl.textContent = state.phase === "deploy" ? "Deployment" : "Battle";
+      turnTextEl.textContent = `Turn ${state.turnNumber} · ${state.turn.toUpperCase()}`;
+    }
+
+    function selectionInfo(unit) {
+      if (!unit) {
+        unitDetailsEl.innerHTML = "No unit selected.";
+        return;
+      }
+      unitDetailsEl.innerHTML = `<strong>${unit.type}</strong> (${unit.side})<br>HP ${unit.hp}/${unit.maxHp} · Morale ${Math.round(unit.morale)}<br>ATK ${unit.atk} · Move ${unit.move} · Range ${unit.range}${unit.routed ? "<br><em>Routed</em>" : ""}`;
+    }
+
+    function armyInfo() {
+      const playerMorale = computeArmyMorale("player");
+      const aiMorale = computeArmyMorale("ai");
+      const playerAlive = aliveUnits("player").length;
+      const aiAlive = aliveUnits("ai").length;
+      armyStatsEl.innerHTML = `
+        <div>Player units: <strong>${playerAlive}</strong> | Avg morale: <strong>${playerMorale}</strong></div>
+        <div>Enemy units: <strong>${aiAlive}</strong> | Avg morale: <strong>${aiMorale}</strong></div>
+        <div>Actions left this turn: <strong>${state.actionPoints}</strong></div>
+        <div>Feigned retreat cooldown: <strong>${state.retreatCooldown}</strong></div>
+      `;
     }
 
     function render() {
@@ -611,7 +587,8 @@
         const unit = getUnitById(tile.unitId);
         if (unit) {
           const unitDiv = document.createElement("div");
-          unitDiv.className = `unit ${unit.routed ? "routed" : unit.side}`;
+          const cls = unit.routed ? "routed" : unit.side;
+          unitDiv.className = `unit ${cls}`;
           unitDiv.innerHTML = `<div>${unit.type}</div><div>${Math.max(0, unit.hp)} | ${Math.round(Math.max(0, unit.morale))}</div>`;
           div.appendChild(unitDiv);
         }
@@ -620,9 +597,8 @@
         battlefield.appendChild(div);
       });
 
-      updateHeader();
-      updateDeployPreview();
       selectionInfo(selected);
+      updateHeader();
       armyInfo();
     }
 
@@ -646,6 +622,7 @@
         render();
         return;
       }
+    }
 
       if (state.turn !== "player") return;
 
@@ -656,6 +633,7 @@
         render();
         return;
       }
+    }
 
       if (!selected || selected.side !== "player" || selected.acted || selected.routed) return;
 
@@ -663,6 +641,7 @@
       if (possibleMove) {
         moveUnit(selected, x, y);
         log(`${selected.type} maneuvers to (${x},${y}).`);
+        state.selectedUnitId = selected.id;
         evaluateSurrender();
         render();
         return;
@@ -670,7 +649,8 @@
 
       if (clickedUnit && clickedUnit.side === "ai" && attackOptions(selected).some(e => e.id === clickedUnit.id)) {
         attack(selected, clickedUnit);
-        log(`${selected.type} strikes ${clickedUnit.type} in brutal melee.`);
+        log(`${selected.type} strikes ${clickedUnit.type} for heavy fighting.`);
+        state.selectedUnitId = selected.id;
         render();
       }
     }
@@ -687,23 +667,31 @@
             log(`${u.type} rallies and rejoins the line.`);
           }
         }
-        const penalty = calculateSurroundPenalty(u);
-        if (penalty > 0) u.morale -= penalty;
+        const surroundPenalty = calculateSurroundPenalty(u);
+        if (surroundPenalty > 0) u.morale -= surroundPenalty;
       });
-      state.actionPoints = activeUnits(side).length;
-      if (side === "player" && state.retreatCooldown > 0) state.retreatCooldown -= 1;
+
+      state.maxActions = activeUnits(side).length;
+      state.actionPoints = state.maxActions;
+      if (side === "player") {
+        if (state.retreatCooldown > 0) state.retreatCooldown -= 1;
+      }
+
       evaluateSurrender();
+      updateHeader();
       render();
     }
 
     function aiTurn() {
       if (state.gameOver) return;
-      setStatus("Enemy is issuing orders...");
 
-      activeUnits("ai").forEach(unit => {
+      setStatus("Enemy is issuing orders...");
+      const aiUnits = activeUnits("ai");
+
+      aiUnits.forEach(unit => {
         if (unit.acted || state.gameOver) return;
 
-        const attacks = attackOptions(unit).filter(t => !t.routed);
+        const attacks = attackOptions(unit).filter(target => !target.routed);
         if (attacks.length) {
           attacks.sort((a, b) => (a.hp + a.morale / 3) - (b.hp + b.morale / 3));
           attack(unit, attacks[0]);
@@ -713,12 +701,15 @@
         const targets = activeUnits("player");
         if (!targets.length) return;
         targets.sort((a, b) => distance(unit, a) - distance(unit, b));
+        const target = targets[0];
 
-        const options = movementOptions(unit);
-        options.sort((a, b) => distance(a, targets[0]) - distance(b, targets[0]));
-        if (options[0]) {
-          moveUnit(unit, options[0].x, options[0].y);
-          if (Math.random() < 0.2) log(`${unit.type} feints toward your flank.`);
+        const candidates = movementOptions(unit);
+        candidates.sort((a, b) => distance(a, target) - distance(b, target));
+
+        const best = candidates[0];
+        if (best) {
+          moveUnit(unit, best.x, best.y);
+          if (Math.random() < 0.18) log(`${unit.type} feints toward your flank.`);
         }
       });
 
@@ -726,18 +717,19 @@
         state.turnNumber += 1;
         resetTurn("player");
         if (!state.gameOver) setStatus("Your turn. Press the attack or reposition carefully.");
-      }, 260);
+      }, 280);
     }
 
     function endPlayerTurn() {
       if (state.phase !== "battle" || state.gameOver || state.turn !== "player") return;
       state.turn = "ai";
       state.selectedUnitId = null;
+      updateHeader();
       render();
       setTimeout(() => {
         resetTurn("ai");
         aiTurn();
-      }, 160);
+      }, 180);
     }
 
     function feignedRetreat() {
@@ -747,12 +739,14 @@
         setStatus("Select a fresh Cavalry unit to perform feigned retreat.");
         return;
       }
+
       const retreatX = Math.max(0, selected.x - 2);
       const tile = tileAt(retreatX, selected.y);
       if (!tile || tile.unitId) {
         setStatus("No room to retreat there.");
         return;
       }
+
       moveUnit(selected, retreatX, selected.y);
       selected.morale = Math.min(selected.maxMorale, selected.morale + 10);
       state.retreatCooldown = 4;
@@ -761,24 +755,16 @@
       render();
     }
 
-    function initGame() {
-      nextBtn.addEventListener("click", endPlayerTurn);
-      retreatBtn.addEventListener("click", feignedRetreat);
-      newBtn.addEventListener("click", setupBattle);
-      window.addEventListener("error", (event) => {
-        if (statusTextEl) {
-          statusTextEl.textContent = "A runtime error occurred. Please press New Battle to retry.";
-        }
-        console.error("Runtime error:", event.message);
-      });
+    nextBtn.addEventListener("click", endPlayerTurn);
+    retreatBtn.addEventListener("click", feignedRetreat);
+    newBtn.addEventListener("click", () => {
+      battleLogEl.innerHTML = "";
+      nextBtn.disabled = false;
+      retreatBtn.disabled = false;
       setupBattle();
-    }
+    });
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initGame);
-    } else {
-      initGame();
-    }
+    setupBattle();
   </script>
 </body>
 </html>
