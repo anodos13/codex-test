@@ -622,6 +622,19 @@
         render();
         return;
       }
+      deployPanelEl.style.display = "block";
+      nextBtn.disabled = true;
+      retreatBtn.disabled = true;
+      const next = state.toDeploy[0];
+      if (!next) {
+        deployPreviewEl.innerHTML = "All units deployed.";
+        return;
+      }
+      deployPreviewEl.innerHTML = `
+        <strong>Next to place:</strong> ${next.type}<br>
+        HP ${next.hp}/${next.maxHp} · ATK ${next.atk} · Move ${next.move} · Range ${next.range}<br>
+        Morale ${next.morale} · <strong>${state.toDeploy.length}</strong> units left to deploy
+      `;
     }
 
       if (state.turn !== "player") return;
@@ -746,6 +759,13 @@
         setStatus("No room to retreat there.");
         return;
       }
+      moveUnit(selected, retreatX, selected.y);
+      selected.morale = Math.min(selected.maxMorale, selected.morale + 10);
+      state.retreatCooldown = 4;
+      log(`${selected.type} executes a feigned retreat, baiting pursuit.`);
+      setStatus("Retreat executed. Enemy may overextend chasing you.");
+      render();
+    }
 
       moveUnit(selected, retreatX, selected.y);
       selected.morale = Math.min(selected.maxMorale, selected.morale + 10);
